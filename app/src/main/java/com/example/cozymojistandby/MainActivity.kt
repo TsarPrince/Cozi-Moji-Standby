@@ -19,10 +19,10 @@ class MainActivity : ComponentActivity() {
     private lateinit var colon2: TextView
 
     private var showSeconds = false
-    private var digitGap = -30f // Default overlap
+    private var digitGap = -35f
     private var fontSize = 360f
     private var font = R.font.sf_pro
-    private var glassyEffect = true
+    private var glassyEffect = false
 
     companion object {
         private const val SWAP_DURATION = 820L
@@ -122,11 +122,7 @@ class MainActivity : ComponentActivity() {
         if (glassyEffect) {
             // LAYER_TYPE_HARDWARE allows the view to use BlendModes against siblings
             v.setLayerType(View.LAYER_TYPE_HARDWARE, Paint().apply {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                    blendMode = BlendMode.PLUS // Equivalent to iOS plusLighter
-                } else {
-                    xfermode = PorterDuffXfermode(PorterDuff.Mode.ADD)
-                }
+                xfermode = PorterDuffXfermode(PorterDuff.Mode.ADD)
             })
         } else {
             v.setLayerType(View.LAYER_TYPE_NONE, null)
@@ -316,14 +312,16 @@ class MainActivity : ComponentActivity() {
 
     // ---------- STYLE ----------
 
+    // chose a random palette each once
+    val palette = palettes.entries.random().value
     private fun applyGradient(v: TextView, index: Int) {
         val h = v.textSize
-        val alpha = "#e5"
+
         val colors = when (index) {
-            0, 4 -> intArrayOf(Color.parseColor(alpha + "0261da"), Color.parseColor(alpha + "0063db"))
-            1, 5 -> intArrayOf(Color.parseColor(alpha + "61d392"), Color.parseColor(alpha + "65da98"))
-            2 -> intArrayOf(Color.parseColor(alpha + "38b0fc"), Color.parseColor(alpha + "37b6fb"))
-            3 -> intArrayOf(Color.parseColor(alpha + "2a8564"), Color.parseColor(alpha + "288b65"))
+            0, 4 -> palette.c0
+            1, 5 -> palette.c1
+            2 -> palette.c2
+            3 -> palette.c3
             else -> intArrayOf(Color.WHITE, Color.WHITE)
         }
         v.paint.shader = LinearGradient(0f, 0f, 0f, h, colors, null, Shader.TileMode.CLAMP)
@@ -433,7 +431,6 @@ class MainActivity : ComponentActivity() {
         val colonSize = fontSize * 0.65f
         colon1.textSize = colonSize
         colon2.textSize = colonSize
-        
         layoutAll()
     }
 }
