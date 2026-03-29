@@ -18,7 +18,7 @@ class MainActivity : ComponentActivity() {
     private lateinit var colon1: TextView
     private lateinit var colon2: TextView
 
-    private var showSeconds = true
+    private var showSeconds = false
     private var digitGap = -30f // Default overlap
     private var font = R.font.sf_pro
 
@@ -48,6 +48,12 @@ class MainActivity : ComponentActivity() {
 
         colon1 = findViewById(R.id.colon1)
         colon2 = findViewById(R.id.colon2)
+
+        // Make colons fully opaque
+        colon1.alpha = 0.9f
+        colon2.alpha = 0.9f
+        colon1.setTextColor(Color.WHITE)
+        colon2.setTextColor(Color.WHITE)
 
         initSlots()
 
@@ -185,12 +191,12 @@ class MainActivity : ComponentActivity() {
             val w = itemWidths[i]
 
             if (i == 2 || i == 5) {
-                currentX -= gap
+                currentX -= gap/2
             }
             view.translationX = currentX + w / 2
 
             if (i == 2 || i == 5) {
-                currentX -= gap
+                currentX -= gap/2
             }
             currentX += w + gap
         }
@@ -282,10 +288,12 @@ class MainActivity : ComponentActivity() {
 
     private fun applyGradient(v: TextView, index: Int) {
         val h = v.textSize
+        val alpha = "#e5"
         val colors = when (index) {
-            0, 1 -> intArrayOf(Color.parseColor("#CC6FE7FF"), Color.parseColor("#CC2196F3"))
-            2, 3 -> intArrayOf(Color.parseColor("#CC7BFFB5"), Color.parseColor("#CC4CAF50"))
-            4, 5 -> intArrayOf(Color.parseColor("#CCD0A1FF"), Color.parseColor("#CC9D50BB"))
+            0, 4 -> intArrayOf(Color.parseColor(alpha + "0261da"), Color.parseColor(alpha + "0063db"))
+            1, 5 -> intArrayOf(Color.parseColor(alpha + "61d392"), Color.parseColor(alpha + "65da98"))
+            2 -> intArrayOf(Color.parseColor(alpha + "38b0fc"), Color.parseColor(alpha + "37b6fb"))
+            3 -> intArrayOf(Color.parseColor(alpha + "2a8564"), Color.parseColor(alpha + "288b65"))
             else -> intArrayOf(Color.WHITE, Color.WHITE)
         }
         v.paint.shader = LinearGradient(0f, 0f, 0f, h, colors, null, Shader.TileMode.CLAMP)
