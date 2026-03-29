@@ -20,6 +20,7 @@ class MainActivity : ComponentActivity() {
 
     private var showSeconds = false
     private var digitGap = -30f // Default overlap
+    private var fontSize = 360f
     private var font = R.font.sf_pro
 
     companion object {
@@ -105,7 +106,7 @@ class MainActivity : ComponentActivity() {
 
     private fun createDigit(): TextView {
         return TextView(this).apply {
-            textSize = 260f
+            textSize = fontSize
             setTextColor(Color.WHITE)
             typeface = ResourcesCompat.getFont(context, font)
             includeFontPadding = false
@@ -189,7 +190,7 @@ class MainActivity : ComponentActivity() {
             items.add(slots[5]); itemWidths.add(fixedDigitWidth)
         }
 
-        val totalW = itemWidths.sum() + (itemWidths.size - 1) * gap - 4 * gap
+        val totalW = itemWidths.sum() + (itemWidths.size - 1) * gap - gap
         var currentX = -totalW / 2
 
         for (i in items.indices) {
@@ -315,25 +316,92 @@ class MainActivity : ComponentActivity() {
     private fun showSettings() {
         val layout = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(40, 40, 40, 40)
+            setPadding(60, 40, 60, 40)
         }
-        val seek = SeekBar(this).apply {
-            max = 100
-            progress = (digitGap + 80).toInt()
+
+        // Gap Slider
+        val gapLabel = TextView(this).apply {
+            text = "Digit Gap: ${digitGap.toInt()}"
+            setPadding(0, 20, 0, 10)
         }
+        val gapSeek = SeekBar(this).apply {
+            max = 200
+            progress = (digitGap + 120).toInt()
+            setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+                override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
+                    gapLabel.text = "Digit Gap: ${progress - 120}"
+                }
+                override fun onStartTrackingTouch(seekBar: SeekBar?) {}
+                override fun onStopTrackingTouch(seekBar: SeekBar?) {}
+            })
+        }
+
+        // Font Size Slider
+        val sizeLabel = TextView(this).apply {
+            text = "Font Size: ${fontSize.toInt()}"
+            setPadding(0, 40, 0, 10)
+        }
+        val sizeSeek = SeekBar(this).apply {
+            max = 400
+            progress = (fontSize - 100).toInt()
+            setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+                override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
+                    sizeLabel.text = "Font Size: ${progress + 100}"
+                }
+                override fun onStartTrackingTouch(seekBar: SeekBar?) {}
+                override fun onStopTrackingTouch(seekBar: SeekBar?) {}
+            })
+        }
+
         val toggle = Switch(this).apply {
             text = "Show Seconds"
             isChecked = showSeconds
+            setPadding(0, 40, 0, 20)
         }
-        layout.addView(seek)
+
+        layout.addView(gapLabel)
+        layout.addView(gapSeek)
+        layout.addView(sizeLabel)
+        layout.addView(sizeSeek)
         layout.addView(toggle)
+
         AlertDialog.Builder(this)
             .setView(layout)
             .setTitle("Settings")
             .setPositiveButton("OK") { _, _ ->
-                digitGap = seek.progress.toFloat() - 80f
+                digitGap = gapSeek.progress.toFloat() - 120f
+                fontSize = sizeSeek.progress.toFloat() + 100f
                 showSeconds = toggle.isChecked
+                
+                updateAllDigits()
             }
             .show()
+    }
+
+    private fun updateAllDigits() {
+        slots.forEachIndexed { index, container ->
+            for (i in 0 until container.childCount) {
+                val tv = container.getChildAt(i) as? TextView ?: continue
+                tv.textSize = fontSize
+                
+                val w = tv.paint.measureText("0").toInt()
+                val fm = tv.paint.fontMetricsInt
+                val h = fm.bottom - fm.top
+                
+                tv.layoutParams = FrameLayout.LayoutParams(w, h).apply {
+                    gravity = Gravity.CENTER
+                }
+                tv.pivotX = w / 2f
+                tv.pivotY = h / 2f
+                
+                applyGradient(tv, index)
+            }
+        }
+        
+        val colonSize = fontSize * 0.65f
+        colon1.textSize = colonSize
+        colon2.textSize = colonSize
+        
+        layoutAll()
     }
 }
