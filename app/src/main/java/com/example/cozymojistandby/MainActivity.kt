@@ -22,6 +22,7 @@ class MainActivity : ComponentActivity() {
     private var digitGap = -30f // Default overlap
     private var fontSize = 360f
     private var font = R.font.sf_pro
+    private var glassyEffect = true
 
     companion object {
         private const val SWAP_DURATION = 820L
@@ -112,6 +113,28 @@ class MainActivity : ComponentActivity() {
             includeFontPadding = false
             setPadding(0, 0, 0, 0)
             gravity = Gravity.CENTER
+            
+            applyGlassyLook(this)
+        }
+    }
+
+    private fun applyGlassyLook(v: View) {
+        if (glassyEffect) {
+            // LAYER_TYPE_HARDWARE allows the view to use BlendModes against siblings
+            v.setLayerType(View.LAYER_TYPE_HARDWARE, Paint().apply {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    blendMode = BlendMode.PLUS // Equivalent to iOS plusLighter
+                } else {
+                    xfermode = PorterDuffXfermode(PorterDuff.Mode.ADD)
+                }
+            })
+        } else {
+            v.setLayerType(View.LAYER_TYPE_NONE, null)
+        }
+        
+        // Remove any render effect (blur)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            v.setRenderEffect(null)
         }
     }
 
@@ -353,6 +376,12 @@ class MainActivity : ComponentActivity() {
             })
         }
 
+        val glassyToggle = Switch(this).apply {
+            text = "Glassy Effect (Vibrancy)"
+            isChecked = glassyEffect
+            setPadding(0, 40, 0, 10)
+        }
+
         val toggle = Switch(this).apply {
             text = "Show Seconds"
             isChecked = showSeconds
@@ -363,6 +392,7 @@ class MainActivity : ComponentActivity() {
         layout.addView(gapSeek)
         layout.addView(sizeLabel)
         layout.addView(sizeSeek)
+        layout.addView(glassyToggle)
         layout.addView(toggle)
 
         AlertDialog.Builder(this)
@@ -372,6 +402,7 @@ class MainActivity : ComponentActivity() {
                 digitGap = gapSeek.progress.toFloat() - 120f
                 fontSize = sizeSeek.progress.toFloat() + 100f
                 showSeconds = toggle.isChecked
+                glassyEffect = glassyToggle.isChecked
                 
                 updateAllDigits()
             }
@@ -394,6 +425,7 @@ class MainActivity : ComponentActivity() {
                 tv.pivotX = w / 2f
                 tv.pivotY = h / 2f
                 
+                applyGlassyLook(tv)
                 applyGradient(tv, index)
             }
         }
