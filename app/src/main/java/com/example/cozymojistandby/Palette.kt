@@ -9,7 +9,7 @@ data class Palette(
     val c3: IntArray
 )
 
-val pallets = mapOf<String, Palette>(
+val palettes = mapOf<String, Palette>(
     "blue-green" to Palette(
         color("0261da", "0063db"),
         color("61d392", "65da98"),
