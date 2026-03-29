@@ -18,8 +18,8 @@ class MainActivity : ComponentActivity() {
     private lateinit var colon1: TextView
     private lateinit var colon2: TextView
 
-    private var showSeconds = false
-    private var digitGap = -40f
+    private var showSeconds = true
+    private var digitGap = -30f // Default overlap
     private var font = R.font.sf_pro
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -68,34 +68,37 @@ class MainActivity : ComponentActivity() {
 
     private fun initSlots() {
         slots.forEachIndexed { i, container ->
-
             container.clipChildren = false
             container.clipToPadding = false
-            container.setPadding(120, 120, 120, 120)
 
             val tv = createDigit()
             tv.text = "0"
+            
+            // Set fixed size and pivot during initialization
+            val w = tv.paint.measureText("0").toInt()
+            val fm = tv.paint.fontMetricsInt
+            val h = fm.bottom - fm.top
+            tv.layoutParams = FrameLayout.LayoutParams(w, h).apply {
+                gravity = Gravity.CENTER
+            }
+            tv.pivotX = w / 2f
+            tv.pivotY = h / 2f
+
             applyGradient(tv, i)
             tv.rotation = randomTilt()
 
-            val params = FrameLayout.LayoutParams(
-                FrameLayout.LayoutParams.WRAP_CONTENT,
-                FrameLayout.LayoutParams.WRAP_CONTENT
-            )
-            params.gravity = Gravity.CENTER
-
-            container.addView(tv, params)
+            container.addView(tv)
         }
     }
 
     private fun createDigit(): TextView {
         return TextView(this).apply {
-            textSize = 160f
+            textSize = 260f
             setTextColor(Color.WHITE)
             typeface = ResourcesCompat.getFont(context, font)
-
-            setPadding(80, 80, 80, 80)
-            setLayerType(View.LAYER_TYPE_SOFTWARE, null)
+            includeFontPadding = false
+            setPadding(0, 0, 0, 0)
+            gravity = Gravity.CENTER
         }
     }
 
@@ -113,9 +116,24 @@ class MainActivity : ComponentActivity() {
                 val s = String.format("%02d", c.get(Calendar.SECOND))
 
                 val full = if (showSeconds) h + m + s else h + m
+                val changedIndices = mutableListOf<Int>()
 
+                // Identify which slots are actually changing
                 for (i in full.indices) {
-                    updateSlot(slots[i], full[i].toString(), i)
+                    if (i < slots.size) {
+                        val currentTv = slots[i].getChildAt(0) as TextView
+                        if (currentTv.text != full[i].toString()) {
+                            changedIndices.add(i)
+                        }
+                    }
+                }
+
+                // Update and jiggle only if there are changes
+                if (changedIndices.isNotEmpty()) {
+                    changedIndices.forEach { i ->
+                        updateSlot(slots[i], full[i].toString(), i)
+                    }
+                    jiggleOthers(changedIndices)
                 }
 
                 slots[4].visibility = if (showSeconds) View.VISIBLE else View.GONE
@@ -134,36 +152,77 @@ class MainActivity : ComponentActivity() {
     // ---------- POSITION ----------
 
     private fun layoutAll() {
-        val spacing = 160f + digitGap
+        val density = resources.displayMetrics.density
+        val gap = digitGap * density
 
-        val offsets = if (showSeconds)
-            floatArrayOf(-3f, -2f, -0.5f, 0.5f, 2f, 3f)
-        else
-            floatArrayOf(-2f, -1f, 1f, 2f)
+        val refTv = slots[0].getChildAt(0) as TextView
+        val fixedDigitWidth = refTv.paint.measureText("0")
+        
+        val colonW = colon1.paint.measureText(":")
 
-        slots.forEachIndexed { i, container ->
-            if (!showSeconds && i >= 4) return@forEachIndexed
-            container.translationX = offsets[i] * spacing
+        val items = mutableListOf<View>()
+        val itemWidths = mutableListOf<Float>()
+
+        // H1 H2 : M1 M2
+        items.add(slots[0]); itemWidths.add(fixedDigitWidth)
+        items.add(slots[1]); itemWidths.add(fixedDigitWidth)
+        items.add(colon1); itemWidths.add(colonW)
+        items.add(slots[2]); itemWidths.add(fixedDigitWidth)
+        items.add(slots[3]); itemWidths.add(fixedDigitWidth)
+
+        if (showSeconds) {
+            // : S1 S2
+            items.add(colon2); itemWidths.add(colonW)
+            items.add(slots[4]); itemWidths.add(fixedDigitWidth)
+            items.add(slots[5]); itemWidths.add(fixedDigitWidth)
         }
 
-        colon1.translationX = -spacing * 0.5f
-        colon2.translationX = spacing * 1.5f
+        val totalW = itemWidths.sum() + (itemWidths.size - 1) * gap - 4 * gap
+        var currentX = -totalW / 2
+
+        for (i in items.indices) {
+            val view = items[i]
+            val w = itemWidths[i]
+
+            if (i == 2 || i == 5) {
+                currentX -= gap
+            }
+            view.translationX = currentX + w / 2
+
+            if (i == 2 || i == 5) {
+                currentX -= gap
+            }
+            currentX += w + gap
+        }
+
+        val yOff = -25f * density
+        colon1.translationY = yOff
+        colon2.translationY = yOff
     }
 
     // ---------- UPDATE ----------
 
     private fun updateSlot(container: FrameLayout, newText: String, index: Int) {
         val old = container.getChildAt(0) as TextView
-        if (old.text == newText) return
-
+        
         val newView = createDigit()
         newView.text = newText
+        
+        // Force fixed width and height to ensure pivot is perfectly centered
+        val w = old.paint.measureText("0").toInt()
+        val fm = old.paint.fontMetricsInt
+        val h = fm.bottom - fm.top
+        
+        newView.layoutParams = FrameLayout.LayoutParams(w, h).apply {
+            gravity = Gravity.CENTER
+        }
+        newView.pivotX = w / 2f
+        newView.pivotY = h / 2f
 
         applyGradient(old, index)
         applyGradient(newView, index)
 
         val tilt = randomTilt()
-
         container.addView(newView, 0)
 
         val screenH = resources.displayMetrics.heightPixels.toFloat()
@@ -190,40 +249,51 @@ class MainActivity : ComponentActivity() {
                 container.removeView(old)
 
                 newView.animate()
-                    .rotation(tilt + randomTilt() * 0.3f)
+                    .rotation(tilt + (Random.nextFloat() * 2f - 1f))
                     .setDuration(500)
-                    .setInterpolator(PathInterpolator(0.3f, 1.4f, 0.3f, 1f))
+                    .setInterpolator(OvershootInterpolator(2f))
                     .start()
             }
             .start()
     }
 
+    private fun jiggleOthers(exceptIndices: List<Int>) {
+        slots.forEachIndexed { i, container ->
+            // Jiggle only stable digits that aren't currently transitioning
+            if (!exceptIndices.contains(i) && container.visibility == View.VISIBLE) {
+                val view = container.getChildAt(0) as? TextView ?: return@forEachIndexed
+                
+                val newTilt = randomTilt()
+                
+                // Explicitly ensure pivot is centered before animating
+                view.pivotX = view.width / 2f
+                view.pivotY = view.height / 2f
+                
+                view.animate()
+                    .rotation(newTilt)
+                    .setDuration(600)
+                    .setInterpolator(OvershootInterpolator(3f))
+                    .start()
+            }
+        }
+    }
+
     // ---------- STYLE ----------
 
     private fun applyGradient(v: TextView, index: Int) {
-        val w = v.paint.measureText(v.text.toString()) + 300f
-
+        val h = v.textSize
         val colors = when (index) {
-            0, 1 -> intArrayOf(
-                Color.parseColor("#AA6FE7FF"),
-                Color.parseColor("#CC4FD8FF")
-            )
-            2, 3 -> intArrayOf(
-                Color.parseColor("#AA7BFFB5"),
-                Color.parseColor("#CC4BFF9A")
-            )
-            else -> intArrayOf(
-                Color.parseColor("#AAE0A3FF"),
-                Color.parseColor("#CCB46CFF")
-            )
+            0, 1 -> intArrayOf(Color.parseColor("#CC6FE7FF"), Color.parseColor("#CC2196F3"))
+            2, 3 -> intArrayOf(Color.parseColor("#CC7BFFB5"), Color.parseColor("#CC4CAF50"))
+            4, 5 -> intArrayOf(Color.parseColor("#CCD0A1FF"), Color.parseColor("#CC9D50BB"))
+            else -> intArrayOf(Color.WHITE, Color.WHITE)
         }
-
-        v.paint.shader = LinearGradient(0f, 0f, w, 0f, colors, null, Shader.TileMode.CLAMP)
-        v.setShadowLayer(60f, 0f, 0f, colors[0])
+        v.paint.shader = LinearGradient(0f, 0f, 0f, h, colors, null, Shader.TileMode.CLAMP)
+        v.setShadowLayer(0f, 0f, 0f, 0)
     }
 
     private fun randomTilt(): Float {
-        return Random.nextFloat() * 6f - 3f
+        return Random.nextFloat() * 16f - 8f
     }
 
     // ---------- SETTINGS ----------
@@ -233,25 +303,21 @@ class MainActivity : ComponentActivity() {
             orientation = LinearLayout.VERTICAL
             setPadding(40, 40, 40, 40)
         }
-
         val seek = SeekBar(this).apply {
-            max = 50
-            progress = digitGap.toInt() + 25
+            max = 100
+            progress = (digitGap + 80).toInt()
         }
-
         val toggle = Switch(this).apply {
             text = "Show Seconds"
             isChecked = showSeconds
         }
-
         layout.addView(seek)
         layout.addView(toggle)
-
         AlertDialog.Builder(this)
             .setView(layout)
             .setTitle("Settings")
             .setPositiveButton("OK") { _, _ ->
-                digitGap = seek.progress - 25f
+                digitGap = seek.progress.toFloat() - 80f
                 showSeconds = toggle.isChecked
             }
             .show()
