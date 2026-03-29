@@ -22,6 +22,12 @@ class MainActivity : ComponentActivity() {
     private var digitGap = -30f // Default overlap
     private var font = R.font.sf_pro
 
+    companion object {
+        private const val SWAP_DURATION = 820L
+        private const val JIGGLE_DURATION = 600L
+        private const val POST_SWAP_SETTLE_DURATION = 500L
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
@@ -238,7 +244,7 @@ class MainActivity : ComponentActivity() {
             .rotation(tilt)
             .alpha(0f)
             .setInterpolator(OvershootInterpolator(0.7f))
-            .setDuration(420)
+            .setDuration(SWAP_DURATION)
             .start()
 
         newView.translationY = screenH
@@ -250,13 +256,13 @@ class MainActivity : ComponentActivity() {
             .rotation(tilt)
             .alpha(1f)
             .setInterpolator(PathInterpolator(0.2f, 1.3f, 0.2f, 1f))
-            .setDuration(420)
+            .setDuration(SWAP_DURATION)
             .withEndAction {
                 container.removeView(old)
 
                 newView.animate()
                     .rotation(tilt + (Random.nextFloat() * 2f - 1f))
-                    .setDuration(500)
+                    .setDuration(POST_SWAP_SETTLE_DURATION)
                     .setInterpolator(OvershootInterpolator(2f))
                     .start()
             }
@@ -277,7 +283,7 @@ class MainActivity : ComponentActivity() {
                 
                 view.animate()
                     .rotation(newTilt)
-                    .setDuration(600)
+                    .setDuration(JIGGLE_DURATION)
                     .setInterpolator(OvershootInterpolator(3f))
                     .start()
             }
