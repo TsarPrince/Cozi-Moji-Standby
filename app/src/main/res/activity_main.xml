@@ -1,0 +1,18 @@
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/root"
+    android:background="#0A0A0E"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <TextView
+        android:id="@+id/clockText"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="12:34"
+        android:textStyle="bold"
+        android:textSize="140sp"
+        android:letterSpacing="-0.02"
+        android:layout_gravity="center"
+        android:fontFamily="sans-serif-medium"
+        android:includeFontPadding="false"/>
+</FrameLayout>

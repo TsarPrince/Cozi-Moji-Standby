@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#050507">
+
+    <!-- DIGIT LAYERS (FULL SCREEN) -->
+    <FrameLayout android:id="@+id/h1" android:layout_width="match_parent" android:layout_height="match_parent"/>
+    <FrameLayout android:id="@+id/h2" android:layout_width="match_parent" android:layout_height="match_parent"/>
+
+    <FrameLayout android:id="@+id/m1" android:layout_width="match_parent" android:layout_height="match_parent"/>
+    <FrameLayout android:id="@+id/m2" android:layout_width="match_parent" android:layout_height="match_parent"/>
+
+    <FrameLayout android:id="@+id/s1" android:layout_width="match_parent" android:layout_height="match_parent" android:visibility="gone"/>
+    <FrameLayout android:id="@+id/s2" android:layout_width="match_parent" android:layout_height="match_parent" android:visibility="gone"/>
+
+    <!-- COLONS -->
+    <TextView
+        android:id="@+id/colon1"
+        android:text=":"
+        android:textSize="120sp"
+        android:textColor="#66FFFFFF"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"/>
+
+    <TextView
+        android:id="@+id/colon2"
+        android:text=":"
+        android:textSize="100sp"
+        android:textColor="#55FFFFFF"
+        android:visibility="gone"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"/>
+
+</FrameLayout>
