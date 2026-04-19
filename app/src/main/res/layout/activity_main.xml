@@ -41,4 +41,23 @@
         android:textStyle="bold"
         android:alpha="0.7"/>
 
+    <!-- Debug Log View -->
+    <ScrollView
+        android:id="@+id/debugScroll"
+        android:layout_width="300dp"
+        android:layout_height="200dp"
+        android:layout_gravity="bottom|start"
+        android:layout_margin="16dp"
+        android:background="#88000000"
+        android:padding="8dp"
+        android:visibility="gone">
+        <TextView
+            android:id="@+id/debugLog"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textColor="#00FF00"
+            android:textSize="10sp"
+            android:typeface="monospace" />
+    </ScrollView>
+
 </FrameLayout>

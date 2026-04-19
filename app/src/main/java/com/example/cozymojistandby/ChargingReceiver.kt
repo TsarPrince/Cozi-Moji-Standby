@@ -13,11 +13,12 @@ class ChargingReceiver : BroadcastReceiver() {
         private const val CHANNEL_ID = "standby_channel"
         private const val NOTIFICATION_ID = 1001
         const val ACTION_EXIT = "com.example.cozymojistandby.EXIT"
+        const val ACTION_DEBUG_LOG = "com.example.cozymojistandby.DEBUG_LOG"
     }
 
     override fun onReceive(context: Context, intent: Intent) {
         val action = intent.action
-        Log.d(TAG, "onReceive: action received = $action")
+        sendLog(context, "Received action: $action")
         
         // Detailed battery status log
         val batteryStatus: Intent? = IntentFilter(Intent.ACTION_BATTERY_CHANGED).let { ifilter ->
@@ -31,22 +32,28 @@ class ChargingReceiver : BroadcastReceiver() {
         val usbCharge: Boolean = chargePlug == BatteryManager.BATTERY_PLUGGED_USB
         val acCharge: Boolean = chargePlug == BatteryManager.BATTERY_PLUGGED_AC
         
-        Log.d(TAG, "Battery status: isCharging=$isCharging, plugType=$chargePlug (USB=$usbCharge, AC=$acCharge)")
+        sendLog(context, "Battery: isCharging=$isCharging, plug=$chargePlug (USB=$usbCharge, AC=$acCharge)")
 
         when (action) {
             Intent.ACTION_POWER_CONNECTED -> {
-                Log.d(TAG, "Power connected! Attempting to launch standby...")
+                sendLog(context, "Power connected! Launching standby...")
                 handlePowerConnected(context)
             }
             Intent.ACTION_POWER_DISCONNECTED -> {
-                Log.d(TAG, "Power disconnected! Sending exit signal...")
+                sendLog(context, "Power disconnected! Sending exit...")
                 val exitIntent = Intent(ACTION_EXIT)
                 context.sendBroadcast(exitIntent)
             }
-            else -> {
-                Log.d(TAG, "Received unhandled action: $action")
-            }
         }
+    }
+
+    private fun sendLog(context: Context, msg: String) {
+        Log.d(TAG, msg)
+        val intent = Intent(ACTION_DEBUG_LOG).apply {
+            putExtra("message", msg)
+            `package` = context.packageName
+        }
+        context.sendBroadcast(intent)
     }
 
     private fun handlePowerConnected(context: Context) {
@@ -65,7 +72,6 @@ class ChargingReceiver : BroadcastReceiver() {
 
         createNotificationChannel(context)
 
-        Log.d(TAG, "Creating high-priority notification with FullScreenIntent")
         val builder = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(R.mipmap.ic_launcher)
             .setContentTitle("Charging Started")
@@ -80,11 +86,10 @@ class ChargingReceiver : BroadcastReceiver() {
         notificationManager.notify(NOTIFICATION_ID, builder.build())
         
         try {
-            Log.d(TAG, "Attempting direct startActivity...")
             context.startActivity(fullScreenIntent)
-            Log.d(TAG, "startActivity call completed successfully")
+            sendLog(context, "Direct startActivity triggered")
         } catch (e: Exception) {
-            Log.e(TAG, "Direct start failed: ${e.message}. App likely backgrounded without DrawOverlays permission.")
+            sendLog(context, "Direct start failed: ${e.message}")
         }
     }
 

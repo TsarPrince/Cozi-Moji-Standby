@@ -6,18 +6,22 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.content.res.ColorStateList
 import android.graphics.*
+import android.graphics.drawable.ColorDrawable
 import android.graphics.drawable.GradientDrawable
 import android.os.*
 import android.provider.Settings
+import android.util.Log
 import android.view.*
 import android.view.animation.*
 import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
 import androidx.activity.OnBackPressedCallback
+import androidx.appcompat.app.AlertDialog
 import androidx.core.content.ContextCompat
 import androidx.core.content.res.ResourcesCompat
 import androidx.core.graphics.toColorInt
 import androidx.core.net.toUri
+import androidx.core.view.GestureDetectorCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
@@ -25,7 +29,9 @@ import androidx.core.view.isVisible
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.materialswitch.MaterialSwitch
 import com.google.android.material.slider.Slider
+import java.text.SimpleDateFormat
 import java.util.*
+import kotlin.math.abs
 import kotlin.random.Random
 
 class MainActivity : AppCompatActivity() {
@@ -34,17 +40,30 @@ class MainActivity : AppCompatActivity() {
     private lateinit var colon1: TextView
     private lateinit var colon2: TextView
     private lateinit var setupOverlay: FrameLayout
+    private lateinit var debugScroll: ScrollView
+    private lateinit var debugLogView: TextView
+    private lateinit var gestureDetector: GestureDetectorCompat
 
     private var showSeconds = false
     private var digitGap = -35f
     private var fontSize = 360f
     private var fontId = R.font.sf_pro
     private var glassyEffect = false
+    private var showDebugger = false
 
-    private val exitReceiver = object : BroadcastReceiver() {
+    private val receiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
-            if (intent.action == ChargingReceiver.ACTION_EXIT) {
-                finish()
+            when (intent.action) {
+                ChargingReceiver.ACTION_EXIT -> {
+                    logToScreen("Signal: Exit received")
+                    finish()
+                }
+                ChargingReceiver.ACTION_DEBUG_LOG -> {
+                    val msg = intent.getStringExtra("message") ?: ""
+                    logToScreen("PowerLog: $msg")
+                }
+                Intent.ACTION_POWER_CONNECTED -> logToScreen("System: Power Connected")
+                Intent.ACTION_POWER_DISCONNECTED -> logToScreen("System: Power Disconnected")
             }
         }
     }
@@ -95,6 +114,8 @@ class MainActivity : AppCompatActivity() {
 
         colon1 = findViewById(R.id.colon1)
         colon2 = findViewById(R.id.colon2)
+        debugScroll = findViewById(R.id.debugScroll)
+        debugLogView = findViewById(R.id.debugLog)
 
         colon1.alpha = 0.9f
         colon2.alpha = 0.9f
@@ -103,36 +124,107 @@ class MainActivity : AppCompatActivity() {
 
         initSlots()
         setupOverlayUI()
+        setupGestureDetection(root)
 
         onBackPressedDispatcher.addCallback(this,
             object : OnBackPressedCallback(true) {
                 override fun handleOnBackPressed() {}
             })
 
-        root.setOnLongClickListener {
-            showSettings()
-            true
+        val filter = IntentFilter().apply {
+            addAction(ChargingReceiver.ACTION_EXIT)
+            addAction(ChargingReceiver.ACTION_DEBUG_LOG)
+            addAction(Intent.ACTION_POWER_CONNECTED)
+            addAction(Intent.ACTION_POWER_DISCONNECTED)
         }
-
-        val filter = IntentFilter(ChargingReceiver.ACTION_EXIT)
         ContextCompat.registerReceiver(
             this,
-            exitReceiver,
+            receiver,
             filter,
-            ContextCompat.RECEIVER_NOT_EXPORTED
+            ContextCompat.RECEIVER_EXPORTED
         )
 
         startClock()
+        logToScreen("App Init Complete")
+    }
+
+    private fun setupGestureDetection(root: View) {
+        gestureDetector = GestureDetectorCompat(this, object : GestureDetector.SimpleOnGestureListener() {
+            override fun onDoubleTap(e: MotionEvent): Boolean {
+                logToScreen("Touch: Double Tap at (${e.x.toInt()}, ${e.y.toInt()})")
+                return true
+            }
+
+            override fun onLongPress(e: MotionEvent) {
+                logToScreen("Touch: Long Press -> Opening Settings")
+                showSettings()
+            }
+
+            override fun onSingleTapConfirmed(e: MotionEvent): Boolean {
+                logToScreen("Touch: Single Tap at (${e.x.toInt()}, ${e.y.toInt()})")
+                return true
+            }
+        })
+
+        var tripleFingerStartY = 0f
+        root.setOnTouchListener { v, event ->
+            gestureDetector.onTouchEvent(event)
+            
+            when (event.actionMasked) {
+                MotionEvent.ACTION_DOWN -> {
+                    logToScreen("Touch: Action Down")
+                    v.performClick()
+                }
+                MotionEvent.ACTION_UP -> {
+                    logToScreen("Touch: Action Up")
+                }
+                MotionEvent.ACTION_POINTER_DOWN -> {
+                    if (event.pointerCount == 3) {
+                        tripleFingerStartY = event.getY(0)
+                        logToScreen("Gesture: Triple Finger Detect")
+                    }
+                }
+                MotionEvent.ACTION_MOVE -> {
+                    if (event.pointerCount == 3) {
+                        val deltaY = event.getY(0) - tripleFingerStartY
+                        if (abs(deltaY) > 80) {
+                            logToScreen("Gesture: Triple Finger Swipe ${if (deltaY > 0) "Down" else "Up"}")
+                            tripleFingerStartY = event.getY(0) 
+                        }
+                    }
+                }
+            }
+            true
+        }
     }
 
     override fun onDestroy() {
         super.onDestroy()
-        unregisterReceiver(exitReceiver)
+        unregisterReceiver(receiver)
     }
 
     override fun onResume() {
         super.onResume()
         updateSetupVisibility()
+        
+        // Manual battery check on resume
+        val ifilter = IntentFilter(Intent.ACTION_BATTERY_CHANGED)
+        val batteryStatus = registerReceiver(null, ifilter)
+        val status = batteryStatus?.getIntExtra(BatteryManager.EXTRA_STATUS, -1) ?: -1
+        val isCharging = status == BatteryManager.BATTERY_STATUS_CHARGING || status == BatteryManager.BATTERY_STATUS_FULL
+        logToScreen("State: Resumed (Charging=$isCharging)")
+    }
+
+    private fun logToScreen(message: String) {
+        val time = SimpleDateFormat("HH:mm:ss", Locale.US).format(Date())
+        val entry = "[$time] $message\n"
+        
+        Handler(Looper.getMainLooper()).post {
+            debugLogView.append(entry)
+            if (showDebugger) {
+                debugScroll.post { debugScroll.fullScroll(View.FOCUS_DOWN) }
+            }
+        }
     }
 
     private fun setupOverlayUI() {
@@ -459,12 +551,17 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun showSettings() {
+        val displayMetrics = resources.displayMetrics
+        val density = displayMetrics.density
+        val maxHeight = (displayMetrics.heightPixels * 0.75f).toInt()
+
         val rootLayout = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            val p = (24 * resources.displayMetrics.density).toInt()
-            setPadding(p, p, p, p)
+            val p = (24 * density).toInt()
+            setPadding(p, p, p, (p * 2))
             background = GradientDrawable().apply {
                 setColor("#1C1C1E".toColorInt())
+                cornerRadius = 48f
             }
         }
 
@@ -476,6 +573,8 @@ class MainActivity : AppCompatActivity() {
             setPadding(0, 0, 0, 32)
         }
         rootLayout.addView(title)
+
+        var dialogInstance: AlertDialog? = null
 
         fun createSlider(label: String, min: Float, maxVal: Float, current: Float, step: Float, onProgress: (Float) -> Unit) {
             val container = LinearLayout(this).apply {
@@ -499,8 +598,20 @@ class MainActivity : AppCompatActivity() {
                 thumbTintList = ColorStateList.valueOf(Color.WHITE)
                 trackActiveTintList = ColorStateList.valueOf(accentColor)
                 
+                addOnSliderTouchListener(object : Slider.OnSliderTouchListener {
+                    override fun onStartTrackingTouch(s: Slider) {
+                        dialogInstance?.window?.setDimAmount(0.0f)
+                        rootLayout.animate().alpha(0.2f).setDuration(200).start()
+                    }
+                    override fun onStopTrackingTouch(s: Slider) {
+                        dialogInstance?.window?.setDimAmount(0.6f)
+                        rootLayout.animate().alpha(1.0f).setDuration(200).start()
+                    }
+                })
+
                 addOnChangeListener { _, value, _ ->
                     onProgress(value)
+                    updateAllDigits()
                 }
             }
             
@@ -540,18 +651,35 @@ class MainActivity : AppCompatActivity() {
             rootLayout.addView(row)
         }
 
-        createToggle("Show Seconds", showSeconds) { showSeconds = it }
-        createToggle("Glassy Vibrancy", glassyEffect) { glassyEffect = it }
+        createToggle("Show Seconds", showSeconds) { 
+            showSeconds = it
+            updateAllDigits()
+        }
+        createToggle("Glassy Vibrancy", glassyEffect) { 
+            glassyEffect = it
+            updateAllDigits()
+        }
+        createToggle("Show debugger for nerds", showDebugger) {
+            showDebugger = it
+            debugScroll.isVisible = it
+            if (it) logToScreen("Debugger enabled")
+        }
 
-        MaterialAlertDialogBuilder(this)
-            .setView(rootLayout)
-            .setPositiveButton("Done") { _, _ -> updateAllDigits() }
-            .show().apply {
-                window?.setBackgroundDrawable(GradientDrawable().apply {
-                    setColor("#1C1C1E".toColorInt())
-                    cornerRadius = 48f
-                })
-            }
+        val scrollContainer = ScrollView(this).apply {
+            isVerticalScrollBarEnabled = true
+            overScrollMode = View.OVER_SCROLL_IF_CONTENT_SCROLLS
+            // Force a fixed height to ensure scrollability
+            layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, maxHeight)
+            addView(rootLayout)
+        }
+
+        dialogInstance = MaterialAlertDialogBuilder(this)
+            .setView(scrollContainer)
+            .create()
+
+        dialogInstance.show()
+        
+        dialogInstance.window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
     }
 
     private fun updateAllDigits() {
