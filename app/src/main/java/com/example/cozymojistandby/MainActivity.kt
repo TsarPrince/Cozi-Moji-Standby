@@ -62,8 +62,13 @@ class MainActivity : AppCompatActivity() {
                     val msg = intent.getStringExtra("message") ?: ""
                     logToScreen("PowerLog: $msg")
                 }
-                Intent.ACTION_POWER_CONNECTED -> logToScreen("System: Power Connected")
-                Intent.ACTION_POWER_DISCONNECTED -> logToScreen("System: Power Disconnected")
+                Intent.ACTION_POWER_CONNECTED -> {
+                    logToScreen("System: Power Connected")
+                }
+                Intent.ACTION_POWER_DISCONNECTED -> {
+                    logToScreen("System: Power Disconnected -> Exiting app")
+                    finish() // Exit app on power disconnected as requested
+                }
             }
         }
     }
@@ -553,12 +558,14 @@ class MainActivity : AppCompatActivity() {
     private fun showSettings() {
         val displayMetrics = resources.displayMetrics
         val density = displayMetrics.density
+        // Limit max height in landscape
         val maxHeight = (displayMetrics.heightPixels * 0.75f).toInt()
 
         val rootLayout = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             val p = (24 * density).toInt()
-            setPadding(p, p, p, (p * 2))
+            // Added safe padding at the bottom to ensure nothing is cut off
+            setPadding(p, p, p, (p * 3))
             background = GradientDrawable().apply {
                 setColor("#1C1C1E".toColorInt())
                 cornerRadius = 48f
@@ -601,7 +608,7 @@ class MainActivity : AppCompatActivity() {
                 addOnSliderTouchListener(object : Slider.OnSliderTouchListener {
                     override fun onStartTrackingTouch(s: Slider) {
                         dialogInstance?.window?.setDimAmount(0.0f)
-                        rootLayout.animate().alpha(0.2f).setDuration(200).start()
+                        rootLayout.animate().alpha(0.3f).setDuration(200).start()
                     }
                     override fun onStopTrackingTouch(s: Slider) {
                         dialogInstance?.window?.setDimAmount(0.6f)
@@ -668,8 +675,17 @@ class MainActivity : AppCompatActivity() {
         val scrollContainer = ScrollView(this).apply {
             isVerticalScrollBarEnabled = true
             overScrollMode = View.OVER_SCROLL_IF_CONTENT_SCROLLS
-            // Force a fixed height to ensure scrollability
-            layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, maxHeight)
+            // Use FrameLayout.LayoutParams for the drawer itself
+            layoutParams = FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, 
+                maxHeight
+            ).apply {
+                // Vertical padding to ensure it doesn't touch screen edges
+                topMargin = (24 * density).toInt()
+                bottomMargin = (24 * density).toInt()
+                leftMargin = (48 * density).toInt()
+                rightMargin = (48 * density).toInt()
+            }
             addView(rootLayout)
         }
 
