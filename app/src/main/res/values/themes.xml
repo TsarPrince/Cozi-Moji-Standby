@@ -1,5 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <style name="Theme.CozyMojiStandby" parent="Theme.Material3.Dark.NoActionBar">
+        <item name="colorPrimary">#38b0fc</item>
+        <item name="colorSecondary">#61d392</item>
+        <item name="android:windowBackground">#050507</item>
+        <item name="android:statusBarColor">#000000</item>
+        <item name="android:navigationBarColor">#000000</item>
+    </style>
 
-    <style name="Theme.CozyMojiStandby" parent="android:Theme.Material.Light.NoActionBar" />
+    <!-- Custom theme for the splash screen -->
+    <style name="Theme.App.Starting" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenAnimatedIcon">@drawable/cozymoji</item>
+        <item name="windowSplashScreenBackground">#050507</item>
+        <item name="postSplashScreenTheme">@style/Theme.CozyMojiStandby</item>
+    </style>
 </resources>

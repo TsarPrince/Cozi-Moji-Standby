@@ -1,34 +1,44 @@
 package com.example.cozymojistandby
 
-import android.app.AlertDialog
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.content.res.ColorStateList
 import android.graphics.*
-import android.net.Uri
+import android.graphics.drawable.GradientDrawable
 import android.os.*
 import android.provider.Settings
 import android.view.*
 import android.view.animation.*
 import android.widget.*
-import androidx.activity.ComponentActivity
+import androidx.appcompat.app.AppCompatActivity
 import androidx.activity.OnBackPressedCallback
+import androidx.core.content.ContextCompat
 import androidx.core.content.res.ResourcesCompat
+import androidx.core.graphics.toColorInt
+import androidx.core.net.toUri
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
+import androidx.core.view.isVisible
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import com.google.android.material.materialswitch.MaterialSwitch
+import com.google.android.material.slider.Slider
 import java.util.*
 import kotlin.random.Random
 
-class MainActivity : ComponentActivity() {
+class MainActivity : AppCompatActivity() {
 
     private lateinit var slots: List<FrameLayout>
     private lateinit var colon1: TextView
     private lateinit var colon2: TextView
-    private lateinit var setupLayout: LinearLayout
+    private lateinit var setupOverlay: FrameLayout
 
     private var showSeconds = false
     private var digitGap = -35f
     private var fontSize = 360f
-    private var font = R.font.sf_pro
+    private var fontId = R.font.sf_pro
     private var glassyEffect = false
 
     private val exitReceiver = object : BroadcastReceiver() {
@@ -52,6 +62,7 @@ class MainActivity : ComponentActivity() {
             setShowWhenLocked(true)
             setTurnScreenOn(true)
         } else {
+            @Suppress("DEPRECATION")
             window.addFlags(
                 WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED or
                 WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON or
@@ -65,10 +76,11 @@ class MainActivity : ComponentActivity() {
         root.clipChildren = false
         root.clipToPadding = false
 
-        window.decorView.systemUiVisibility =
-            View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY or
-                    View.SYSTEM_UI_FLAG_FULLSCREEN or
-                    View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
+        WindowCompat.setDecorFitsSystemWindows(window, false)
+        WindowInsetsControllerCompat(window, window.decorView).apply {
+            hide(WindowInsetsCompat.Type.systemBars())
+            systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+        }
 
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
 
@@ -97,12 +109,18 @@ class MainActivity : ComponentActivity() {
                 override fun handleOnBackPressed() {}
             })
 
-        val filter = IntentFilter(ChargingReceiver.ACTION_EXIT)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            registerReceiver(exitReceiver, filter, Context.RECEIVER_NOT_EXPORTED)
-        } else {
-            registerReceiver(exitReceiver, filter)
+        root.setOnLongClickListener {
+            showSettings()
+            true
         }
+
+        val filter = IntentFilter(ChargingReceiver.ACTION_EXIT)
+        ContextCompat.registerReceiver(
+            this,
+            exitReceiver,
+            filter,
+            ContextCompat.RECEIVER_NOT_EXPORTED
+        )
 
         startClock()
     }
@@ -120,56 +138,112 @@ class MainActivity : ComponentActivity() {
     private fun setupOverlayUI() {
         val root = findViewById<FrameLayout>(R.id.root)
         
-        setupLayout = LinearLayout(this).apply {
+        setupOverlay = FrameLayout(this).apply {
+            setBackgroundColor("#E6000000".toColorInt())
+            visibility = View.GONE
+            isClickable = true
+            isFocusable = true
+        }
+
+        val card = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER
-            setBackgroundColor(Color.parseColor("#CC000000"))
-            setPadding(60, 60, 60, 60)
-            visibility = View.GONE
+            val padding = (32 * resources.displayMetrics.density).toInt()
+            setPadding(padding, padding, padding, padding)
+            
+            background = GradientDrawable().apply {
+                setColor("#2C2C2E".toColorInt())
+                cornerRadius = 64f
+            }
+            elevation = 20f
         }
 
         val title = TextView(this).apply {
-            text = "Setup Required"
-            textSize = 24f
+            text = "Smooth Transition"
+            textSize = 28f
             setTextColor(Color.WHITE)
+            typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
             gravity = Gravity.CENTER
-            setPadding(0, 0, 0, 40)
+            setPadding(0, 0, 0, 16)
         }
 
         val desc = TextView(this).apply {
-            text = "To launch automatically when charging, this app needs permission to display over other apps."
-            textSize = 16f
-            setTextColor(Color.LTGRAY)
+            text = "To enable Standby mode automatically when charging, we need permission to display over other apps."
+            textSize = 15f
+            setTextColor("#A1A1AA".toColorInt())
             gravity = Gravity.CENTER
-            setPadding(0, 0, 0, 60)
+            setLineSpacing(0f, 1.2f)
+            setPadding(0, 0, 0, 48)
         }
 
-        val btn = Button(this).apply {
-            text = "Grant Permission"
+        val btnGrant = Button(this, null, 0, com.google.android.material.R.style.Widget_Material3_Button_TonalButton).apply {
+            text = "GRANT PERMISSION"
+            setTextColor(Color.BLACK)
+            typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
+            letterSpacing = 0.1f
+            
+            background = GradientDrawable().apply {
+                setColor(palette.c2[0])
+                cornerRadius = 100f
+            }
+            
+            val py = (16 * resources.displayMetrics.density).toInt()
+            val px = (48 * resources.displayMetrics.density).toInt()
+            setPadding(px, py, px, py)
+            
             setOnClickListener {
                 val intent = Intent(
                     Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
-                    Uri.parse("package:$packageName")
+                    "package:$packageName".toUri()
                 )
                 startActivity(intent)
             }
         }
 
-        setupLayout.addView(title)
-        setupLayout.addView(desc)
-        setupLayout.addView(btn)
+        val btnLater = TextView(this).apply {
+            text = "I'll setup later"
+            textSize = 14f
+            setTextColor("#71717A".toColorInt())
+            gravity = Gravity.CENTER
+            setPadding(0, 32, 0, 0)
+            isClickable = true
+            isFocusable = true
+            
+            setOnClickListener {
+                setupOverlay.animate()
+                    .alpha(0f)
+                    .setDuration(400)
+                    .withEndAction { setupOverlay.visibility = View.GONE }
+                    .start()
+            }
+        }
+
+        card.addView(title)
+        card.addView(desc)
+        card.addView(btnGrant)
+        card.addView(btnLater)
         
-        root.addView(setupLayout, FrameLayout.LayoutParams(
+        val cardParams = FrameLayout.LayoutParams(
+            (400 * resources.displayMetrics.density).toInt(),
+            ViewGroup.LayoutParams.WRAP_CONTENT
+        ).apply {
+            gravity = Gravity.CENTER
+        }
+        
+        setupOverlay.addView(card, cardParams)
+        root.addView(setupOverlay, FrameLayout.LayoutParams(
             FrameLayout.LayoutParams.MATCH_PARENT,
             FrameLayout.LayoutParams.MATCH_PARENT
         ))
     }
 
     private fun updateSetupVisibility() {
-        if (!Settings.canDrawOverlays(this)) {
-            setupLayout.visibility = View.VISIBLE
-        } else {
-            setupLayout.visibility = View.GONE
+        if (Settings.canDrawOverlays(this)) {
+            setupOverlay.visibility = View.GONE
+        } else if (setupOverlay.visibility == View.GONE) {
+            setupOverlay.alpha = 0f
+            setupOverlay.visibility = View.VISIBLE
+            setupOverlay.animate().alpha(1f).setDuration(600).start()
         }
     }
 
@@ -201,7 +275,7 @@ class MainActivity : ComponentActivity() {
         return TextView(this).apply {
             textSize = fontSize
             setTextColor(Color.WHITE)
-            typeface = ResourcesCompat.getFont(context, font)
+            typeface = ResourcesCompat.getFont(context, fontId)
             includeFontPadding = false
             setPadding(0, 0, 0, 0)
             gravity = Gravity.CENTER
@@ -224,9 +298,9 @@ class MainActivity : ComponentActivity() {
         handler.post(object : Runnable {
             override fun run() {
                 val c = Calendar.getInstance()
-                val h = String.format("%02d", c.get(Calendar.HOUR_OF_DAY))
-                val m = String.format("%02d", c.get(Calendar.MINUTE))
-                val s = String.format("%02d", c.get(Calendar.SECOND))
+                val h = String.format(Locale.US, "%02d", c.get(Calendar.HOUR_OF_DAY))
+                val m = String.format(Locale.US, "%02d", c.get(Calendar.MINUTE))
+                val s = String.format(Locale.US, "%02d", c.get(Calendar.SECOND))
 
                 val full = if (showSeconds) h + m + s else h + m
                 val changedIndices = mutableListOf<Int>()
@@ -247,9 +321,9 @@ class MainActivity : ComponentActivity() {
                     jiggleOthers(changedIndices)
                 }
 
-                slots[4].visibility = if (showSeconds) View.VISIBLE else View.GONE
-                slots[5].visibility = if (showSeconds) View.VISIBLE else View.GONE
-                colon2.visibility = if (showSeconds) View.VISIBLE else View.GONE
+                slots[4].isVisible = showSeconds
+                slots[5].isVisible = showSeconds
+                colon2.isVisible = showSeconds
 
                 layoutAll()
                 handler.postDelayed(this, 1000)
@@ -351,7 +425,7 @@ class MainActivity : ComponentActivity() {
 
     private fun jiggleOthers(exceptIndices: List<Int>) {
         slots.forEachIndexed { i, container ->
-            if (!exceptIndices.contains(i) && container.visibility == View.VISIBLE) {
+            if (!exceptIndices.contains(i) && container.isVisible) {
                 val view = container.getChildAt(0) as? TextView ?: return@forEachIndexed
                 val newTilt = randomTilt()
                 view.pivotX = view.width / 2f
@@ -366,7 +440,7 @@ class MainActivity : ComponentActivity() {
     }
 
     // set palette once
-    val palette = palettes.entries.random().value
+    private val palette = palettes.entries.random().value
     private fun applyGradient(v: TextView, index: Int) {
         val h = v.textSize
         val colors = when (index) {
@@ -382,5 +456,128 @@ class MainActivity : ComponentActivity() {
 
     private fun randomTilt(): Float {
         return Random.nextFloat() * 16f - 8f
+    }
+
+    private fun showSettings() {
+        val rootLayout = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            val p = (24 * resources.displayMetrics.density).toInt()
+            setPadding(p, p, p, p)
+            background = GradientDrawable().apply {
+                setColor("#1C1C1E".toColorInt())
+            }
+        }
+
+        val title = TextView(this).apply {
+            text = "Personalize"
+            textSize = 24f
+            setTextColor(Color.WHITE)
+            typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
+            setPadding(0, 0, 0, 32)
+        }
+        rootLayout.addView(title)
+
+        fun createSlider(label: String, min: Float, maxVal: Float, current: Float, step: Float, onProgress: (Float) -> Unit) {
+            val container = LinearLayout(this).apply {
+                orientation = LinearLayout.VERTICAL
+                setPadding(0, 16, 0, 16)
+            }
+            val header = TextView(this).apply {
+                text = label
+                setTextColor("#A1A1AA".toColorInt())
+                textSize = 14f
+                setPadding(0, 0, 0, 8)
+            }
+            
+            val slider = Slider(this).apply {
+                valueFrom = min
+                valueTo = maxVal
+                value = current.coerceIn(min, maxVal)
+                stepSize = step
+                
+                val accentColor = palette.c1[0]
+                thumbTintList = ColorStateList.valueOf(Color.WHITE)
+                trackActiveTintList = ColorStateList.valueOf(accentColor)
+                
+                addOnChangeListener { _, value, _ ->
+                    onProgress(value)
+                }
+            }
+            
+            container.addView(header)
+            container.addView(slider)
+            rootLayout.addView(container)
+        }
+
+        createSlider("Digit Spacing", -120f, 80f, digitGap, 5f) { digitGap = it }
+        createSlider("Clock Size", 100f, 500f, fontSize, 10f) { fontSize = it }
+
+        fun createToggle(label: String, initial: Boolean, onToggle: (Boolean) -> Unit) {
+            val row = RelativeLayout(this).apply {
+                setPadding(0, 24, 0, 24)
+            }
+            val text = TextView(this).apply {
+                text = label
+                setTextColor(Color.WHITE)
+                textSize = 17f
+                layoutParams = RelativeLayout.LayoutParams(
+                    ViewGroup.LayoutParams.WRAP_CONTENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT
+                ).apply { addRule(RelativeLayout.ALIGN_PARENT_LEFT) }
+            }
+            val sw = MaterialSwitch(this).apply {
+                isChecked = initial
+                
+                layoutParams = RelativeLayout.LayoutParams(
+                    ViewGroup.LayoutParams.WRAP_CONTENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT
+                ).apply { addRule(RelativeLayout.ALIGN_PARENT_RIGHT) }
+                
+                setOnCheckedChangeListener { _, checked -> onToggle(checked) }
+            }
+            row.addView(text)
+            row.addView(sw)
+            rootLayout.addView(row)
+        }
+
+        createToggle("Show Seconds", showSeconds) { showSeconds = it }
+        createToggle("Glassy Vibrancy", glassyEffect) { glassyEffect = it }
+
+        MaterialAlertDialogBuilder(this)
+            .setView(rootLayout)
+            .setPositiveButton("Done") { _, _ -> updateAllDigits() }
+            .show().apply {
+                window?.setBackgroundDrawable(GradientDrawable().apply {
+                    setColor("#1C1C1E".toColorInt())
+                    cornerRadius = 48f
+                })
+            }
+    }
+
+    private fun updateAllDigits() {
+        slots.forEachIndexed { index, container ->
+            for (i in 0 until container.childCount) {
+                val tv = container.getChildAt(i) as? TextView ?: continue
+                tv.textSize = fontSize
+                
+                val w = tv.paint.measureText("0").toInt()
+                val fm = tv.paint.fontMetricsInt
+                val h = fm.bottom - fm.top
+                
+                tv.layoutParams = FrameLayout.LayoutParams(w, h).apply {
+                    gravity = Gravity.CENTER
+                }
+                tv.pivotX = w / 2f
+                tv.pivotY = h / 2f
+                
+                applyGlassyLook(tv)
+                applyGradient(tv, index)
+            }
+        }
+        
+        val colonSize = fontSize * 0.65f
+        colon1.textSize = colonSize
+        colon2.textSize = colonSize
+        layoutAll()
     }
 }

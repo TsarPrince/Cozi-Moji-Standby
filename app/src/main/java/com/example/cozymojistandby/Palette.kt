@@ -1,6 +1,7 @@
 package com.example.cozymojistandby
 
 import android.graphics.Color
+import androidx.core.graphics.toColorInt
 
 data class Palette(
     val c0: IntArray,
@@ -26,5 +27,5 @@ val palettes = mapOf<String, Palette>(
 
 fun color(hex1: String, hex2: String) : IntArray {
     val alpha = "#e5"
-    return intArrayOf(Color.parseColor(alpha + hex1), Color.parseColor(alpha + hex2))
+    return intArrayOf((alpha + hex1).toColorInt(), (alpha + hex2).toColorInt())
 }

@@ -1,55 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
-<vector xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:aapt="http://schemas.android.com/aapt"
-    android:width="108dp"
-    android:height="108dp"
-    android:viewportWidth="108"
-    android:viewportHeight="108">
-
-    <!-- Glowing Aura -->
-    <path
-        android:pathData="M54,24c16.57,0 30,13.43 30,30s-13.43,30 -30,30 -30,-13.43 -30,-30 13.43,-30 30,-30z">
-        <aapt:attr name="android:fillColor">
-            <gradient
-                android:centerX="54"
-                android:centerY="54"
-                android:gradientRadius="40"
-                android:type="radial">
-                <item android:color="#4061d392" android:offset="0.0" />
-                <item android:color="#0061d392" android:offset="1.0" />
-            </gradient>
-        </aapt:attr>
-    </path>
-
-    <!-- Main Face Shape (The 'Moji') -->
-    <path
-        android:pathData="M54,34c11.05,0 20,8.95 20,20s-8.95,20 -20,20 -20,-8.95 -20,-20 8.95,-20 20,-20z">
-        <aapt:attr name="android:fillColor">
-            <gradient
-                android:startX="54"
-                android:startY="34"
-                android:endX="54"
-                android:endY="74"
-                android:type="linear">
-                <item android:color="#61d392" android:offset="0.0" />
-                <item android:color="#0261da" android:offset="1.0" />
-            </gradient>
-        </aapt:attr>
-    </path>
-
-    <!-- Eyes (Clock Dots) -->
-    <path
-        android:fillColor="#FFFFFF"
-        android:pathData="M46,50m-3,0a3,3 0,1 1,6 0a3,3 0,1 1,-6 0" />
-    <path
-        android:fillColor="#FFFFFF"
-        android:pathData="M62,50m-3,0a3,3 0,1 1,6 0a3,3 0,1 1,-6 0" />
-
-    <!-- Cozy Smile -->
-    <path
-        android:strokeColor="#FFFFFF"
-        android:strokeWidth="2.5"
-        android:strokeLineCap="round"
-        android:pathData="M44,60c2,4 18,4 20,0" />
-
-</vector>
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item
+        android:drawable="@drawable/cozymoji"
+        android:gravity="center"
+        android:width="72dp"
+        android:height="72dp" />
+</layer-list>
